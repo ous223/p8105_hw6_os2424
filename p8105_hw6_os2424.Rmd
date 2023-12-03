@@ -49,6 +49,7 @@ md_glm|>
   # apply the broom::tidy to this object
   broom::tidy()|> 
   filter(term == "victim_sexMale")|> 
+  # CI
   mutate(OR = exp(estimate),
          OR_upper = exp(estimate + 1.96 * std.error),
          OR_lower = exp(estimate - 1.96 * std.error))|>
@@ -65,6 +66,7 @@ all_glm <- homi|>
          tidy= map(log_re, broom::tidy))|> 
   unnest(tidy)|>
   filter(term == "victim_sexMale")|> 
+  # CI
   mutate(OR = exp(estimate),
          OR_upper = exp(estimate + 1.96 * std.error),
          OR_lower = exp(estimate - 1.96 * std.error))|>
@@ -151,6 +153,7 @@ birthwt <- read_csv("data/birthweight.csv")
 # clean data
 birthwt <- birthwt|>
   janitor::clean_names()|>
+  # convert enteries
   mutate(babysex = case_when(babysex ==1 ~"male",
                              babysex ==2 ~"female"),
          frace = case_when(frace ==1 ~"White",
@@ -169,7 +172,7 @@ birthwt <- birthwt|>
 # check for NA
 sum(is.na(birthwt))
 ```
-Based on a paper analyzing factors affecting birth weight of a newborn , I decided to use 
+Based on a paper analyzing factors affecting birth weight of a newborn, I decided to use 
 baby's sex, baby's length at birth, mother's weight at delivery, gestational age in weeks, father's race, presence of malformations that could affect weight, mother's age at delivery, average number of cigarettes smoked per day during pregnancy, and mother's weight gain during pregnancy as factors to propose a model for birth weight. \
 
 paper reference: Metgud CS, Naik VA, Mallapur MD. Factors affecting birth weight of a newborn--a community based study in rural Karnataka, India. PLoS One. 2012;7(7):e40040. doi:10.1371/journal.pone.0040040
