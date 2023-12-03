@@ -143,3 +143,78 @@ quantile(pull(boot_straps, r.squared), probs = c(0.025,0.975))|>
 quantile(pull(boot_straps_nNA, log_beta), probs = c(0.025,0.975))|>
   knitr::kable()
 ```
+
+# Problem 3
+```{r}
+# import data
+birthwt <- read_csv("data/birthweight.csv")
+# clean data
+birthwt <- birthwt|>
+  janitor::clean_names()|>
+  mutate(babysex = case_when(babysex ==1 ~"male",
+                             babysex ==2 ~"female"),
+         frace = case_when(frace ==1 ~"White",
+                           frace ==2 ~"Black",
+                           frace ==3 ~"Asian",
+                           frace ==4 ~"Puerto Rican",
+                           frace ==8 ~"Other",
+                           frace ==9 ~"Unknown"),
+         malform = case_when(malform ==0 ~"absent",
+                             malform ==1 ~"present"),
+         mrace = case_when(mrace ==1 ~"White",
+                           mrace ==2 ~"Black",
+                           mrace ==3 ~"Asian",
+                           mrace ==4 ~"Puerto Rican",
+                           mrace ==8 ~"Other"))
+# check for NA
+sum(is.na(birthwt))
+```
+Based on a paper analyzing factors affecting birth weight of a newborn , I decided to use 
+baby's sex, baby's length at birth, mother's weight at delivery, gestational age in weeks, father's race, presence of malformations that could affect weight, mother's age at delivery, average number of cigarettes smoked per day during pregnancy, and mother's weight gain during pregnancy as factors to propose a model for birth weight. \
+
+paper reference: Metgud CS, Naik VA, Mallapur MD. Factors affecting birth weight of a newborn--a community based study in rural Karnataka, India. PLoS One. 2012;7(7):e40040. doi:10.1371/journal.pone.0040040
+```{r}
+#Propose a regression model for birthweight
+m1 <- birthwt|>
+  lm(bwt ~ babysex + blength+ gaweeks + frace+malform + momage + smoken + wtgain, data = _)
+# show a plot of model residuals against fitted values
+birthwt|>
+  add_predictions(m1)|>
+  add_residuals(m1)|>
+  ggplot(aes(x = pred, y = resid))+
+  geom_point()
+```
+
+Based on the plot, there is no relationship between the residuals and fitted values. 
+
+```{r}
+# compare model to two others
+m2 <- birthwt|>
+  lm(bwt ~ blength + gaweeks, data = _)
+m3 <- birthwt|>
+  lm(bwt ~ bhead * blength * babysex, data = _)
+# cross-validated prediction error
+cv <- crossv_mc(birthwt, 100)|>
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))|>
+  mutate(
+    f1  = map(train, ~m1),
+    f2  = map(train, ~m2),
+    f3  = map(train, ~m3))|> 
+  mutate(
+    rmse_1 = map2_dbl(f1, test, \(mod, df) rmse(model = mod, data = df)),
+    rmse_2 = map2_dbl(f2, test, \(mod, df) rmse(model = mod, data = df)),
+    rmse_3 = map2_dbl(f3, test, \(mod, df) rmse(model = mod, data = df)))
+cv|> 
+  dplyr::select(starts_with("rmse"))|> 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") |> 
+  mutate(model = fct_inorder(model)) |> 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
+Based on the plot, the intersection model is the best one with the smallest RMSE. The proposed model is better than the main model, which has the largest RMSE. 
